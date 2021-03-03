@@ -105,8 +105,13 @@ class CycleGANModel(BaseModel):
         The option 'direction' can be used to swap domain A and domain B.
         """
         AtoB = self.opt.direction == 'cttomr'
-        self.real_A = torch.from_numpy(np.rollaxis(input['ct' if AtoB else 'mr'].squeeze(0).numpy(), -1, 0)).to(self.device)
-        self.real_B = torch.from_numpy(np.rollaxis(input['mr' if AtoB else 'ct'].squeeze(0).numpy(), -1, 0)).to(self.device)
+
+        # When using 1 batch size to hack 2D network:
+        # self.real_A = torch.from_numpy(np.rollaxis(input['ct' if AtoB else 'mr'].squeeze(0).numpy(), -1, 0)).to(self.device)
+        # self.real_B = torch.from_numpy(np.rollaxis(input['mr' if AtoB else 'ct'].squeeze(0).numpy(), -1, 0)).to(self.device)
+
+        self.real_A = input['ct' if AtoB else 'mr'].to(self.device)
+        self.real_B = input['mr' if AtoB else 'ct'].to(self.device)        
         self.image_paths = input['ct_paths' if AtoB else 'mr_paths']
 
     def forward(self):

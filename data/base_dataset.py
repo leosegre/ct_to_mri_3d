@@ -70,11 +70,11 @@ def get_transform(opt, params=None, convert=True):
     transform_list = []
 
     if 'resize' in opt.preprocess:
-        osize = (opt.load_size, opt.load_size, opt.batch_size)
+        osize = (opt.load_size, opt.load_size, opt.load_size_z)
         transform_list.append(tio.CropOrPad(osize))
 # 
     if 'crop' in opt.preprocess:
-        transform_list.append(tio.CropOrPad((opt.crop_size, opt.crop_size, opt.batch_size)))
+        transform_list.append(tio.CropOrPad((opt.crop_size, opt.crop_size, opt.crop_size_z)))
 # 
 # 
     # Augmentations:
