@@ -460,8 +460,6 @@ class UnetGenerator(nn.Module):
         super(UnetGenerator, self).__init__()
         # construct unet structure
         unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None, norm_layer=norm_layer, innermost=True)  # add the innermost layer
-        for i in range(num_downs - 5):          # add intermediate layers with ngf * 8 filters
-            unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=unet_block, norm_layer=norm_layer, use_dropout=use_dropout)
         # gradually reduce the number of filters from ngf * 8 to ngf
         unet_block = UnetSkipConnectionBlock(ngf * 4, ngf * 8, input_nc=None, submodule=unet_block, norm_layer=norm_layer)
         unet_block = UnetSkipConnectionBlock(ngf * 2, ngf * 4, input_nc=None, submodule=unet_block, norm_layer=norm_layer)
@@ -503,31 +501,34 @@ class UnetSkipConnectionBlock(nn.Module):
             input_nc = outer_nc
         downconv = nn.Conv3d(input_nc, inner_nc, kernel_size=3,
                              stride=2, padding=1, bias=use_bias)
-        downrelu = nn.LeakyReLU(0.2, True)
+        downrelu = nn.LeakyReLU(0.2)
         downnorm = norm_layer(inner_nc)
-        uprelu = nn.ReLU(True)
+        uprelu = nn.ReLU()
         upnorm = norm_layer(outer_nc)
 
         if outermost:
-            upconv = nn.ConvTranspose3d(inner_nc * 2, outer_nc,
-                                        kernel_size=3, stride=2,
-                                        padding=1)
+            upsample = nn.Upsample(scale_factor = 2, mode='nearest')
+            upconv = nn.Conv3d(inner_nc * 2, outer_nc,
+                                kernel_size=3, stride=1,
+                                padding=1)
             down = [downconv]
-            up = [uprelu, upconv, nn.Tanh()]
+            up = [uprelu, upsample, upconv, nn.Tanh()]
             model = down + [submodule] + up
         elif innermost:
-            upconv = nn.ConvTranspose3d(inner_nc, outer_nc,
-                                        kernel_size=3, stride=2,
-                                        padding=1, bias=use_bias)
+            upsample = nn.Upsample(scale_factor = 2, mode='nearest')
+            upconv = nn.Conv3d(inner_nc, outer_nc,
+                                kernel_size=3, stride=1,
+                                padding=1, bias=use_bias)
             down = [downrelu, downconv]
-            up = [uprelu, upconv, upnorm]
+            up = [uprelu, upsample, upconv, upnorm]
             model = down + up
         else:
-            upconv = nn.ConvTranspose3d(inner_nc * 2, outer_nc,
-                                        kernel_size=3, stride=2,
-                                        padding=1, bias=use_bias)
+            upsample = nn.Upsample(scale_factor = 2, mode='nearest')
+            upconv = nn.Conv3d(inner_nc * 2, outer_nc,
+                                kernel_size=3, stride=1,
+                                padding=1, bias=use_bias)
             down = [downrelu, downconv, downnorm]
-            up = [uprelu, upconv, upnorm]
+            up = [uprelu, upsample, upconv, upnorm]
 
             if use_dropout:
                 model = down + [submodule] + up + [nn.Dropout(0.5)]

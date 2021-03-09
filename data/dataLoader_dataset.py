@@ -64,11 +64,18 @@ class DataLoaderDataset(BaseDataset):
         BaseDataset.__init__(self, opt)
         self.dir_ct = os.path.join(opt.dataroot, opt.phase + 'ct')  # create a path '/path/to/data/ct'
         self.dir_mr = os.path.join(opt.dataroot, opt.phase + 'mr')  # create a path '/path/to/data/mr'
+        self.dir_ct_label = os.path.join(opt.dataroot, 'trainct_lables')  # create a path '/path/to/data/ct'
+        self.dir_mr_label = os.path.join(opt.dataroot, 'trainmr_lables')  # create a path '/path/to/data/mr'
 
         self.ct_paths = sorted(make_dataset(self.dir_ct, opt.max_dataset_size))   # load images from '/path/to/data/ct'
         self.mr_paths = sorted(make_dataset(self.dir_mr, opt.max_dataset_size))    # load images from '/path/to/data/mr'
+        self.ct_paths_label = sorted(make_dataset(self.dir_ct_label, opt.max_dataset_size))   # load images from '/path/to/data/ct'
+        self.mr_paths_label = sorted(make_dataset(self.dir_mr_label, opt.max_dataset_size))    # load images from '/path/to/data/mr'
+
         self.ct_size = len(self.ct_paths)  # get the size of dataset ct
         self.mr_size = len(self.mr_paths)  # get the size of dataset mr
+        self.ct_size_label = len(self.ct_paths_label)  # get the size of dataset ct
+        self.mr_size_label = len(self.mr_paths_label)  # get the size of dataset mr
         mrtoct = self.opt.direction == 'mrtoct'
         input_nc = self.opt.output_nc if mrtoct else self.opt.input_nc       # get the number of channels of input image
         output_nc = self.opt.input_nc if mrtoct else self.opt.output_nc      # get the number of channels of output image
@@ -87,37 +94,39 @@ class DataLoaderDataset(BaseDataset):
             mr_paths (str)    -- image paths
         """
         ct_path = self.ct_paths[index % self.ct_size]  # make sure index is within then range
+        ct_path_label = self.ct_paths_label[index % self.ct_size]  # make sure index is within then range
+
         if self.opt.serial_batches:   # make sure index is within then range
             index_mr = index % self.mr_size
         else:   # randomize the index for domain B to avoid fixed pairs.
             index_mr = random.randint(0, self.mr_size - 1)
         mr_path = self.mr_paths[index_mr]
-        num_of_slices = self.opt.batch_size
-        ct_img_ = tio.ScalarImage(ct_path).data
-        # ct_img_ = ct_img_[:,:,:,np.round(np.linspace(0, ct_img_.shape[3]-1, num_of_slices)).astype(int)]
-        # ct_img = torch.unsqueeze(ct_img_, 0).to(dtype=torch.float32)
-        # z_start = random.randint(0, ct_img.shape[4] - spacing * num_of_slices)
-        # ct_img  = nnf.interpolate(ct_img[:,:,z_start:z_start + num_of_slices * spacing], size=(256, 256, num_of_slices), mode='trilinear', align_corners=False)
-        # ct_img  = nnf.interpolate(ct_img, size=(256, 256, num_of_slices), mode='trilinear', align_corners=False)
-        # ct_img = torch.squeeze(ct_img, 0)
+        mr_path_label = self.mr_paths[index_mr]
 
-        mr_img_ = tio.ScalarImage(mr_path).data
-        # mr_img_ = mr_img_[:,:,:,np.round(np.linspace(0, mr_img_.shape[3]-1, num_of_slices)).astype(int)]
-        # mr_img = torch.unsqueeze(mr_img_, 0).to(dtype=torch.float32)
-        # z_start = random.randint(0, mr_img.shape[4] - spacing * num_of_slices)
-        # mr_img = nnf.interpolate(mr_img[:,:,z_start:z_start + num_of_slices * spacing], size=(256, 256, num_of_slices), mode='trilinear', align_corners=False)
-        # mr_img = nnf.interpolate(mr_img, size=(256, 256, num_of_slices), mode='trilinear', align_corners=False)
-        # mr_img = torch.squeeze(mr_img, 0)
-        # save3Dimage(ct_img_, ct_img_.shape, 'images_test/ct_before_transform.png')
-        # save3Dimage(mr_img_, mr_img_.shape, 'images_test/mr_before_transform.png')
+        ct_subject = tio.Subject(
+            t1 = tio.ScalarImage(ct_path),
+            label = tio.LabelMap(ct_path_label)
+        )         
+        
+        mr_subject = tio.Subject(
+            t1 = tio.ScalarImage(mr_path),
+            label = tio.LabelMap(mr_path_label)
+        ) 
+
 
         # apply image transformation
         # ------------------------------------------------
-        ct = self.transform_ct(ct_img_)
-        mr = self.transform_mr(mr_img_)
+        ct_subject_transformed = self.transform_ct(ct_subject)
+        mr_subject_transformed = self.transform_mr(mr_subject)
+
+        ct = ct_subject_transformed.t1.data
+        mr = mr_subject_transformed.t1.data
+        ct_label = ct_subject_transformed.label.data
+        mr_label = mr_subject_transformed.label.data
+
 
         # ------------------------------------------------
-        return {'ct': ct, 'mr': mr, 'ct_paths': ct_path, 'mr_paths': mr_path}
+        return {'ct': ct, 'mr': mr, 'ct_paths': ct_path, 'mr_paths': mr_path, 'ct_label': ct_label, 'mr_label': mr_label}
 
     def __len__(self):
         """Return the total number of images in the dataset.
