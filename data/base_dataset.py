@@ -69,19 +69,13 @@ def get_params(opt, size):
 def get_transform(opt, params=None, convert=True):
     transform_list = []
 
-    if 'resize' in opt.preprocess:
-        osize = (opt.load_size, opt.load_size, opt.load_size_z)
-        transform_list.append(tio.CropOrPad(osize))
-# 
-    if 'crop' in opt.preprocess:
-        transform_list.append(tio.CropOrPad((opt.crop_size, opt.crop_size, opt.crop_size_z)))
-# 
+
 # 
     # Augmentations:
     transform_list += [tio.RandomAnisotropy()]
     max_displacement = 15, 15, 0
     spatial_transforms = {
-        tio.RandomElasticDeformation(max_displacement=max_displacement, locked_borders=2) : 0.75
+        tio.RandomElasticDeformation(max_displacement=5, num_control_points=7, locked_borders=2) : 0.75
         # ,tio.RandomAffine(scales=(0.9, 1.2), degrees=10, isotropic=True, image_interpolation='nearest'): 0.25
     }
     transform_list += [tio.OneOf(spatial_transforms)]
@@ -89,7 +83,13 @@ def get_transform(opt, params=None, convert=True):
     if convert:
         transform_list += [tio.RescaleIntensity((-1, 1))]
 
-    
+    if 'resize' in opt.preprocess:
+        osize = (opt.load_size, opt.load_size, opt.load_size_z)
+        transform_list.append(tio.CropOrPad(osize))
+# 
+    if 'crop' in opt.preprocess:
+        transform_list.append(tio.CropOrPad((opt.crop_size, opt.crop_size, opt.crop_size_z)))
+# 
 
     return tio.Compose(transform_list)
 

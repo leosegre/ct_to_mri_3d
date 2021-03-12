@@ -124,6 +124,10 @@ class DataLoaderDataset(BaseDataset):
         ct_label = ct_subject_transformed.label.data
         mr_label = mr_subject_transformed.label.data
 
+        # print(ct.shape)
+        # print(mr.shape)
+        # print(ct_label.shape)
+        # print(mr_label.shape)
 
         # ------------------------------------------------
         return {'ct': ct, 'mr': mr, 'ct_paths': ct_path, 'mr_paths': mr_path, 'ct_label': ct_label, 'mr_label': mr_label}
